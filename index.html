@@ -4,23 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KLP QC Planner v31</title>
-
-<!-- Favicon از realfavicongenerator.net -->
-<link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="shortcut icon" href="favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-<meta name="apple-mobile-web-app-title" content="KLP Planner" />
-<link rel="manifest" href="site.webmanifest" />
-<meta name="theme-color" content="#0e8ea6" />
-
-<script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
-<style>
-/* ... */
-</style>
-</head>
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="KLP Planner">
+<meta name="theme-color" content="#0e8ea6">
 <script src="https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
@@ -896,7 +886,7 @@ var planReviewed = false;
 var trafficFilters = { date: '', inspector: '', mission: '', status: '', note: '', dist: '' };
 var anSelectedFile = null;
 
-function ruleGapBetweenMissions(){ var h = Number(db.settings.gapHours); return Math.max(1, (h || 12) / 4); }
+function ruleGapBetweenMissions(){ var h = Number(db.settings.gapHours); return Math.max(1, h || 12); }
 function ruleMaxMissionsPerDay(){ return 3; }
 function ruleMaxKmPerDay(){ return 200; }
 function ruleMaxKmPerMission(){ return 150; }
@@ -916,8 +906,26 @@ function ruleWShift21(){ return Number(db.settings.wShift21) || 50; }
 function saveDB(){
   try {
     localStorage.setItem(KEY, JSON.stringify(db));
+    updateDBStatus();
     refreshAll();
-  } catch(e){ console.error('saveDB error:', e); }
+    return true;
+  } catch(e){
+    console.error('saveDB error:', e);
+    updateDBStatus(e);
+    refreshAll();
+    return false;
+  }
+}
+function updateDBStatus(error){
+  var el = document.getElementById('dbStatus');
+  if(!el) return;
+  if(error){
+    el.textContent = 'خطا در ذخیره‌سازی محلی · ' + (error.name === 'QuotaExceededError' ? 'فضای ذخیره پر است' : error.message);
+    el.title = 'تغییرات فعلی در حافظه صفحه هستند اما ذخیره نشدند.';
+    return;
+  }
+  el.textContent = 'پایگاه داده محلی فعال · ' + db.inspectors.length + ' ناظر · ' + db.farms.length + ' فارم';
+  el.title = '';
 }
 function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function esc(s){
@@ -986,8 +994,14 @@ function jalaliInputToIso(s){
   var m = str.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
   if(!m) return '';
   var y = +m[1], mo = +m[2], d = +m[3];
-  if(y >= 1700){ return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  if(mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+  if(y >= 1700){
+    var gd = new Date(y, mo - 1, d);
+    if(gd.getFullYear() !== y || gd.getMonth() !== mo - 1 || gd.getDate() !== d) return '';
+    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
   var g = jalaliToGregorian(y, mo, d);
+  if(!Number.isFinite(g.getTime()) || gregorianToJalali(g) !== String(y) + '/' + String(mo).padStart(2, '0') + '/' + String(d).padStart(2, '0')) return '';
   return g.getFullYear() + '-' + String(g.getMonth() + 1).padStart(2, '0') + '-' + String(g.getDate()).padStart(2, '0');
 }
 function isoToJalali(iso){ return iso ? gregorianToJalali(new Date(iso + 'T00:00')) : ''; }
@@ -1047,6 +1061,7 @@ function renderJalaliPicker(){
   var old = document.getElementById('jalaliPicker');
   if(old) old.remove();
   var days = calMonth <= 6 ? 31 : 30;
+  if(calMonth === 12 && !jalaliInputToIso(calYear + '/12/30')) days = 29;
   var first = jalaliToGregorian(calYear, calMonth, 1);
   var start = (first.getDay() + 1) % 7;
   var selected = document.getElementById(calTargetJ) ? document.getElementById(calTargetJ).value : '';
@@ -1437,7 +1452,8 @@ function getLastShift(insId, beforeDateTime){
   var refIso = localIso(beforeDateTime);
   var daysAgo = daysBetween(lastIso, refIso);
   var restHours = Infinity;
-  if(endTime){ restHours = (beforeDateTime - dtLocal(lastIso, endTime)) / 3600000; }
+  var lastWindow = calculateMissionWindow(last);
+  if(Number.isFinite(lastWindow.end.getTime())) restHours = (beforeDateTime - lastWindow.end) / 3600000;
   return { shift: lastShift, time: missionTime(last), endTime: endTime, restHours: restHours, mission: last, daysAgo: daysAgo };
 }
 function autoInspectorCount(birds){
@@ -1454,19 +1470,13 @@ function calculateMissionWindow(m){
   return { start: start, end: end, allDay: false };
 }
 function hasTimedOverlap(insId, newStart, newEnd, excludeId, isNewAllDay){
-  var newIso = localIso(newStart);
   var all = db.missions.concat(db.draftMissions);
   for(var i = 0; i < all.length; i++){
     var mm = all[i];
     if(excludeId && mm.id === excludeId) continue;
     if(!mm.inspectorIds || mm.inspectorIds.indexOf(insId) < 0) continue;
-    if(missionDateIso(mm) !== newIso) continue;
-    var mmIsLive = isLiveSaleOperation(mm.operation);
-    if(isNewAllDay || mmIsLive) return true;
-    var mmTime = missionTime(mm);
-    var mmStart = dtLocal(missionDateIso(mm), mmTime || '00:00');
-    var mmEt = mm.endTime || '';
-    var mmEnd = mmEt ? dtLocal(missionDateIso(mm), mmEt) : new Date(mmStart.getTime() + Math.max(0.5, loadingHours(num(mm.birds))) * 3600000);
+    var existingWindow = calculateMissionWindow(mm);
+    var mmStart = existingWindow.start, mmEnd = existingWindow.end;
     if(mmStart < newEnd && mmEnd > newStart) return true;
     if(mmEnd <= newStart && (newStart - mmEnd) / 3600000 < ruleGapBetweenMissions()) return true;
     if(newEnd <= mmStart && (mmStart - newEnd) / 3600000 < ruleGapBetweenMissions()) return true;
@@ -1628,6 +1638,7 @@ function readPlannerForm(){
   if(!farm || !iso || (!time && !isLive)) return null;
   if(time && !validTime24(time)) return null;
   if(et && !validTime24(et)) return null;
+  if(time && et && dtLocal(iso, et) <= dtLocal(iso, time)) return null;
   var birds = num(document.getElementById('pBirds').value);
   var liveSale = document.getElementById('pLiveSale').value === 'YES';
   var liveSaleQty = num(document.getElementById('pLiveSaleQty').value);
@@ -2111,6 +2122,10 @@ async function reviewPlan(){
       var st = effectiveDailyStatus(id, iso, true);
       if(st && st !== 'حاضر' && st !== 'ماموریت') warnings.push((ins2 ? ins2.name : 'ناظر') + ': وضعیت ' + st);
       if(f && ins2 && ins2.region !== f.region) warnings.push(ins2.name + ': منطقه متفاوت');
+      if(f && ins2){
+        var ctx = buildCandidateContext(ins2, f, mission, mission.id);
+        if(!ctx.eligible) warnings.push(ins2.name + ': ' + ctx.blockingReason);
+      }
     }
     mission.review = { done: true, warnings: warnings.filter(function(v, idx, arr){ return arr.indexOf(v) === idx; }) };
   }
@@ -2131,6 +2146,15 @@ async function finalizePlan(){
   if(!planReviewed && !allReviewed) return alert('ابتدا بررسی کن.');
   for(var i = 0; i < db.draftMissions.length; i++){
     var m = db.draftMissions[i];
+    var farmForValidation = db.farms.find(function(x){ return x.id === m.farmId; });
+    if(!farmForValidation) return alert('فارم یکی از مأموریت‌ها پیدا نشد.');
+    for(var vi = 0; vi < (m.inspectorIds || []).length; vi++){
+      var assignedId = m.inspectorIds[vi];
+      var assignedInspector = db.inspectors.find(function(x){ return x.id === assignedId; });
+      if(!assignedInspector || !assignedInspector.active) return alert('ناظر انتخاب‌شده برای یکی از مأموریت‌ها پیدا نشد یا غیرفعال است.');
+      var validation = buildCandidateContext(assignedInspector, farmForValidation, m, m.id);
+      if(!validation.eligible) return alert('ثبت نهایی متوقف شد: ' + assignedInspector.name + ' — ' + validation.blockingReason + '\nبرنامه را اصلاح و دوباره بررسی کنید.');
+    }
     var needsPartner = (m.inspectorIds || []).filter(function(id){ var ins = db.inspectors.find(function(x){ return x.id === id; }); return ins && ins.needsPartner; });
     if(needsPartner.length && m.inspectorIds.length < 2){
       var names = needsPartner.map(function(id){ var ins = db.inspectors.find(function(x){ return x.id === id; }); return ins ? ins.name : ''; }).join('، ');
@@ -2484,8 +2508,12 @@ function monthRangeJalali(jm){
   var y = +m[1], mo = +m[2];
   if(mo < 1 || mo > 12) return null;
   var from = jalaliInputToIso(y + '/' + String(mo).padStart(2, '0') + '/01');
-  var last = mo <= 6 ? 31 : 30;
-  var to = jalaliInputToIso(y + '/' + String(mo).padStart(2, '0') + '/' + last);
+  if(!from) return null;
+  var nextYear = mo === 12 ? y + 1 : y;
+  var nextMonth = mo === 12 ? 1 : mo + 1;
+  var nextFirst = jalaliInputToIso(nextYear + '/' + String(nextMonth).padStart(2, '0') + '/01');
+  if(!nextFirst) return null;
+  var to = addLocalDays(nextFirst, -1);
   return { from: from, to: to };
 }
 function exportTrafficSummary(){
@@ -3857,8 +3885,7 @@ function init(){
     document.querySelectorAll('#mainNav button').forEach(function(b){
       b.onclick = function(){ switchTab(b.dataset.tab); };
     });
-    var dbStatus = document.getElementById('dbStatus');
-    if(dbStatus) dbStatus.textContent = 'پایگاه داده محلی فعال · ' + db.inspectors.length + ' ناظر · ' + db.farms.length + ' فارم';
+    updateDBStatus();
     refreshAll();
     console.log('KLP v31 ready.');
   } catch(err) {
