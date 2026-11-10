@@ -1875,38 +1875,38 @@ async function ensureFontsLoaded(){
   } catch(e){ console.warn('font load:', e); }
 }
 function buildImageTableHTML(rows){
-  /* جدول با ستون‌های کامل و break-word در سلول‌های طولانی */
+  var cellStyle = 'border:1px solid #cfe4f0;padding:5px;text-align:center;font-size:14px;line-height:1.5;vertical-align:middle;white-space:nowrap;word-break:keep-all';
   var tableRows = rows.map(function(item){
     var m = item.m;
     var f = item.f;
     var inspList = item.inspList;
     var timeTxt = item.timeTxt;
     return '<tr>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all">' + isoToJalali(missionDateIso(m)) + '</td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all"><b>' + esc(m.slaughter || '—') + '</b></td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all"><b>' + esc(f ? f.code : '—') + '</b><br><span style="font-size:11px;color:#5a7a92">' + esc(f ? f.name : '—') + '</span></td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all">' + esc(f ? f.city : (m.city || '—')) + '</td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all">' + esc(timeTxt) + '</td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all">' + esc(m.operation) + '</td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:center;font-size:12px;white-space:nowrap;word-break:keep-all">' + num(m.birds).toLocaleString('fa-IR') + '</td>' +
-      '<td style="border:1px solid #cfe4f0;padding:8px 6px;text-align:right;font-size:11.5px;min-width:180px;word-break:break-word;line-height:1.9">' + (inspList || '—') + '</td>' +
+      '<td style="' + cellStyle + '">' + isoToJalali(missionDateIso(m)) + '</td>' +
+      '<td style="' + cellStyle + '"><b>' + esc(m.slaughter || '—') + '</b></td>' +
+      '<td style="' + cellStyle + '"><b>' + esc(f ? f.code : '—') + '</b><br><span style="font-size:12.5px;color:#5a7a92">' + esc(f ? f.name : '—') + '</span></td>' +
+      '<td style="' + cellStyle + '">' + esc(f ? f.city : (m.city || '—')) + '</td>' +
+      '<td style="' + cellStyle + '">' + esc(timeTxt) + '</td>' +
+      '<td style="' + cellStyle + '">' + esc(m.operation) + '</td>' +
+      '<td style="' + cellStyle + '">' + num(m.birds).toLocaleString('fa-IR') + '</td>' +
+      '<td style="border:1px solid #cfe4f0;padding:4px;text-align:right;font-size:14px;min-width:220px;line-height:1.45;vertical-align:middle">' + (inspList || '—') + '</td>' +
       '</tr>';
   }).join('');
-  return '<table style="width:100%;border-collapse:collapse;direction:rtl">' +
+  return '<table style="width:100%;border-collapse:collapse;direction:rtl;table-layout:fixed">' +
     '<colgroup>' +
-    '<col style="width:82px"><col style="width:100px"><col style="width:140px">' +
-    '<col style="width:80px"><col style="width:110px"><col style="width:80px">' +
-    '<col style="width:80px"><col style="width:auto">' +
+    '<col style="width:88px"><col style="width:100px"><col style="width:150px">' +
+    '<col style="width:88px"><col style="width:105px"><col style="width:90px">' +
+    '<col style="width:90px"><col style="width:auto">' +
     '</colgroup>' +
     '<thead><tr style="background:#e8f4fa">' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">تاریخ</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">کشتارگاه</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">فارم</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">شهر</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">ساعت</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">عملیات</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">تعداد</th>' +
-    '<th style="border:1px solid #cfe4f0;padding:9px 6px;text-align:center;color:#0a6b7e;font-size:12.5px;white-space:nowrap">ناظر</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">تاریخ</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">کشتارگاه</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">فارم</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">شهر</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">ساعت</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">عملیات</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">تعداد</th>' +
+    '<th style="border:1px solid #cfe4f0;padding:6px 4px;text-align:center;color:#0a6b7e;font-size:14.5px;white-space:nowrap">ناظر</th>' +
     '</tr></thead><tbody>' + tableRows + '</tbody></table>';
 }
 async function exportAllDraftsAsImage(){
@@ -1928,9 +1928,9 @@ async function exportAllDraftsAsImage(){
       if(!ins) return null;
       var kmVal = num(m.distanceByInspector ? m.distanceByInspector[id] : 0);
       if(!kmVal && m._routeCache && m._routeCache[id]) kmVal = num(m._routeCache[id].distanceKm);
-      return '<div style="display:block;padding:3px 6px;margin:2px 0;background:#e6f7fa;border:1px solid #b8dce8;border-radius:6px;color:#0a6b7e;font-size:11.5px;font-weight:700;white-space:nowrap;direction:rtl;text-align:right">' +
-        esc(ins.name) + (kmVal ? ' <span style="background:#fff;padding:1px 5px;border-radius:4px;color:#1e6fb8;font-size:10.5px">🚗 ' + kmVal.toFixed(1) + 'km</span>' : '') +
-        '</div>';
+      return '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;margin:2px;background:#e6f7fa;border:1px solid #b8dce8;border-radius:6px;color:#0a6b7e;font-size:13.5px;font-weight:700;white-space:nowrap;direction:rtl;text-align:right;line-height:1.4">' +
+        esc(ins.name) + (kmVal ? ' <span style="background:#fff;padding:1px 4px;border-radius:4px;color:#1e6fb8;font-size:11.5px">🚗 ' + kmVal.toFixed(1) + ' km</span>' : '') +
+        '</span>';
     }).filter(Boolean).join('');
     var t = missionTime(m);
     var timeTxt = (m.hasTime === false || !t) ? 'بدون ساعت' : t + (m.endTime ? ' تا ' + m.endTime : '');
@@ -1940,13 +1940,13 @@ async function exportAllDraftsAsImage(){
   var holder = document.createElement('div');
   holder.id = 'imgExportHolder';
   holder.dir = 'rtl';
-  holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:1400px;padding:28px;background:#ffffff;' +
+  holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:1280px;padding:18px;background:#ffffff;' +
     'font-family:"Vazirmatn","B Nazanin",Tahoma,Arial,sans-serif;font-feature-settings:"liga" 1;' +
-    'direction:rtl;text-align:right;line-height:1.9;';
+    'direction:rtl;text-align:right;line-height:1.65;';
 
-  var header = '<div style="text-align:center;margin-bottom:20px;padding:18px;background:linear-gradient(135deg,#0a4f6b,#0e8ea6 45%,#14b8c9);border-radius:14px;color:#fff;direction:rtl">' +
-    '<div style="font-size:24px;font-weight:800;letter-spacing:.5px">📸 برنامه موقت</div>' +
-    '<div style="font-size:13px;margin-top:8px;opacity:.94">تعداد مأموریت‌ها: ' + sorted.length + ' | تاریخ گزارش: ' + gregorianToJalali(new Date()) + '</div></div>';
+  var header = '<div style="text-align:center;margin-bottom:12px;padding:12px;background:linear-gradient(135deg,#0a4f6b,#0e8ea6 45%,#14b8c9);border-radius:12px;color:#fff;direction:rtl">' +
+    '<div style="font-size:27px;font-weight:800;letter-spacing:.2px">📸 برنامه موقت</div>' +
+    '<div style="font-size:14px;margin-top:4px;opacity:.94">تعداد مأموریت‌ها: ' + sorted.length + ' | تاریخ گزارش: ' + gregorianToJalali(new Date()) + '</div></div>';
 
   var table = buildImageTableHTML(rowsData);
   holder.innerHTML = header + table;
@@ -1960,7 +1960,7 @@ async function exportAllDraftsAsImage(){
   try {
     /* SnapDOM با embedFonts فونت را در SVG جاسازی می‌کند */
     var img = await snapdom.toPng(holder, {
-      scale: 2,
+      scale: 3,
       backgroundColor: '#ffffff',
       embedFonts: true
     });
