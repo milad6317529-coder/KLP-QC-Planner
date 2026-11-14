@@ -1011,11 +1011,16 @@ function localIso(d){
 }
 function addLocalDays(iso, n){ var d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n); return localIso(d); }
 function daysBetween(iso1, iso2){ return Math.round((new Date(iso2 + 'T00:00') - new Date(iso1 + 'T00:00')) / 86400000); }
-function validTime24(v){ return /^([01]\d|2[0-3]):[0-5]\d$/.test((v || '').trim()); }
+function timeDigitsToAscii(v){
+  return String(v == null ? '' : v)
+    .replace(/[۰-۹]/g, function(d){ return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
+    .replace(/[٠-٩]/g, function(d){ return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
+}
+function validTime24(v){ return /^([01]\d|2[0-3]):[0-5]\d$/.test(timeDigitsToAscii(v).trim()); }
 function setupTime24(){
   document.querySelectorAll('.time24').forEach(function(e){
     e.addEventListener('input', function(){
-      var v = e.value.replace(/\D/g, '').slice(0, 4);
+      var v = timeDigitsToAscii(e.value).replace(/\D/g, '').slice(0, 4);
       if(v.length > 2) v = v.slice(0, 2) + ':' + v.slice(2);
       e.value = v;
     });
@@ -1467,6 +1472,7 @@ function calculateMissionWindow(m){
   var start = dtLocal(iso, time || '00:00');
   var et = m.endTime || '';
   var end = et ? dtLocal(iso, et) : new Date(start.getTime() + Math.max(0.5, loadingHours(birds)) * 3600000);
+  if(et && end <= start) end.setDate(end.getDate() + 1);
   return { start: start, end: end, allDay: false };
 }
 function hasTimedOverlap(insId, newStart, newEnd, excludeId, isNewAllDay){
@@ -1627,25 +1633,29 @@ async function suggest(){
 document.addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.classList.contains('pickInspector')) updateFarmPreview(); });
 document.addEventListener('input', function(e){ if(e.target && ['pNotes', 'pBirds', 'pAvgWeight', 'pTime', 'pEndTime', 'pOperation', 'pSlaughter', 'pQuota', 'pLiveSale', 'pLiveSaleQty'].indexOf(e.target.id) >= 0) updateFarmPreview(); });
 
+var plannerFormError = '';
 function readPlannerForm(){
+  plannerFormError = '';
   var farm = db.farms.find(function(x){ return x.id === document.getElementById('pFarm').value; });
   var iso = document.getElementById('pDate').value || jalaliInputToIso(document.getElementById('pDateJ').value);
   var operation = document.getElementById('pOperation').value;
   var isLive = isLiveSaleOperation(operation);
-  var time = (document.getElementById('pTime').value || '').trim();
-  var et = (document.getElementById('pEndTime').value || '').trim();
+  var time = timeDigitsToAscii(document.getElementById('pTime').value).trim();
+  var et = timeDigitsToAscii(document.getElementById('pEndTime').value).trim();
   var sel = [].map.call(document.querySelectorAll('.pickInspector:checked'), function(x){ return x.value; });
-  if(!farm || !iso || (!time && !isLive)) return null;
-  if(time && !validTime24(time)) return null;
-  if(et && !validTime24(et)) return null;
-  if(time && et && dtLocal(iso, et) <= dtLocal(iso, time)) return null;
+  if(!farm){ plannerFormError = 'فارم را از فهرست انتخاب کنید.'; return null; }
+  if(!iso || !Number.isFinite(new Date(iso + 'T00:00').getTime())){ plannerFormError = 'تاریخ را با تقویم انتخاب کنید.'; return null; }
+  if(!time && !isLive){ plannerFormError = 'ساعت شروع را وارد کنید.'; return null; }
+  if(time && !validTime24(time)){ plannerFormError = 'ساعت شروع معتبر نیست؛ نمونه: 08:30.'; return null; }
+  if(et && !validTime24(et)){ plannerFormError = 'ساعت پایان معتبر نیست؛ نمونه: 18:00.'; return null; }
   var birds = num(document.getElementById('pBirds').value);
   var liveSale = document.getElementById('pLiveSale').value === 'YES';
   var liveSaleQty = num(document.getElementById('pLiveSaleQty').value);
-  if(liveSale && liveSaleQty <= 0) return null;
+  if(liveSale && liveSaleQty <= 0){ plannerFormError = 'تعداد زنده‌فروشی را وارد کنید.'; return null; }
   var editId = document.getElementById('pEditDraftId').value;
   var dtStart = dtLocal(iso, time || '00:00');
   var endDt = et ? dtLocal(iso, et) : new Date(dtStart.getTime() + Math.max(0.5, loadingHours(birds)) * 3600000);
+  if(et && endDt <= dtStart) endDt.setDate(endDt.getDate() + 1);
   var slaughterValue = isLiveSaleOperation(operation) ? 'زنده فروشی' : document.getElementById('pSlaughter').value;
   return {
     id: editId || uid('D'),
@@ -1679,7 +1689,7 @@ async function addDraftMission(){
     if(!farm0) return alert('فارم انتخاب نشده.');
     if(farm0.lat == null || farm0.lon == null) return alert('⚠ فارم مختصات ندارد.\n\nابتدا در تب «فارم‌ها» مختصات را ثبت کنید.');
     var partnerMsg = checkPartnerRequirement(); if(partnerMsg){ alert(partnerMsg); return; }
-    var mission = readPlannerForm(); if(!mission) return alert('فارم، تاریخ و ساعت را وارد کنید.');
+    var mission = readPlannerForm(); if(!mission) return alert(plannerFormError || 'اطلاعات برنامه کامل نیست.');
     mission._routeCache = {};
     var f = db.farms.find(function(x){ return x.id === mission.farmId; });
     if(f){
@@ -1698,7 +1708,7 @@ async function saveEditedDraft(){
     var editId = document.getElementById('pEditDraftId').value; if(!editId) return alert('برنامه انتخاب نشده.');
     var old = db.draftMissions.find(function(x){ return x.id === editId; }); if(!old) return alert('برنامه پیدا نشد.');
     var partnerMsg = checkPartnerRequirement(); if(partnerMsg){ alert(partnerMsg); return; }
-    var mission = readPlannerForm(); if(!mission) return alert('اطلاعات کامل نیست.');
+    var mission = readPlannerForm(); if(!mission) return alert(plannerFormError || 'اطلاعات برنامه کامل نیست.');
     mission.id = editId; mission.updatedAt = new Date().toISOString();
     mission._routeCache = {};
     var f = db.farms.find(function(x){ return x.id === mission.farmId; });
@@ -2281,7 +2291,7 @@ async function saveEditedMission(){
   var editId = document.getElementById('pEditMissionId').value;
   var old = db.missions.find(function(x){ return x.id === editId; }); if(!old) return alert('مأموریت پیدا نشد.');
   var partnerMsg = checkPartnerRequirement(); if(partnerMsg){ alert(partnerMsg); return; }
-  var mission = readPlannerForm(); if(!mission) return alert('اطلاعات کامل نیست.');
+  var mission = readPlannerForm(); if(!mission) return alert(plannerFormError || 'اطلاعات برنامه کامل نیست.');
   mission.id = editId; mission.updatedAt = new Date().toISOString();
   var cache = {};
   mission.distanceKm = 0; mission.distanceByInspector = {}; mission.travelMinutesByInspector = {}; mission.travelMinutes = 0;
